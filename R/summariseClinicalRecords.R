@@ -463,20 +463,9 @@ addVariables <- function(x, tableName, quality, conceptSummary) {
       dplyr::mutate(
         end_before_start = dplyr::if_else(.data$end_date < .data$start_date, 1L, 0L)
       )
-    # Use DATEFROMPARTS for SQL Server/Synapse compatibility (avoids text/VARCHAR(MAX) issues)
-    birth_sql <- dplyr::sql("DATEFROMPARTS(\"year_of_birth\", COALESCE(\"month_of_birth\", 1), COALESCE(\"day_of_birth\", 1))")
-
-    person_tbl <- if (!("birth_datetime" %in% colnames(cdm$person))) {
-      cdm$person |>
-        dplyr::mutate(birthdate = !!birth_sql) |>
-        dplyr::select("person_id", "birthdate")
-    } else {
-      cdm$person |>
-        dplyr::mutate(
-          birthdate = dplyr::sql("CASE WHEN \"birth_datetime\" IS NOT NULL THEN CAST(\"birth_datetime\" AS DATE) ELSE DATEFROMPARTS(\"year_of_birth\", COALESCE(\"month_of_birth\", 1), COALESCE(\"day_of_birth\", 1)) END")
-        ) |>
-        dplyr::select("person_id", "birthdate")
-    }
+    # Use database-specific date construction
+    person_tbl <- addBirthDateWithDatetime(cdm$person, cdm) |>
+      dplyr::select("person_id", "birthdate")
 
 
     x <- x |>

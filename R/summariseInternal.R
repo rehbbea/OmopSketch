@@ -13,7 +13,7 @@ summariseCountsInternal <- function(x, strata, counts) {
       dplyr::summarise(!!!q, .groups = "drop") |>
       dplyr::collect() |>
       dplyr::mutate(dplyr::across(
-        dplyr::all_of(names(q)), \(x) sprintf("%i", as.integer(x))
+        dplyr::all_of(names(q)), \(x) sprintf("%.0f", as.double(x))
       )) |>
       tidyr::pivot_longer(
         cols = dplyr::all_of(names(q)),
@@ -170,24 +170,18 @@ addSexAgeGroup <- function(x, sex, ageGroup, indexDate) {
   person <- omopgenerics::cdmReference(x)$person
 
   # Build person table with sex and/or birth_date as needed
+  # Use database-specific date construction
+ cdm <- omopgenerics::cdmReference(x)
   if (sex && age) {
-    person <- person |>
-      dplyr::mutate(
-        sex = .data$gender_concept_id,
-        # Use DATEFROMPARTS for SQL Server/Synapse compatibility
-        birth_date = dplyr::sql("DATEFROMPARTS(\"year_of_birth\", COALESCE(\"month_of_birth\", 1), COALESCE(\"day_of_birth\", 1))")
-      ) |>
+    person <- addBirthDate(person, cdm) |>
+      dplyr::mutate(sex = .data$gender_concept_id) |>
       dplyr::select("person_id", "sex", "birth_date")
   } else if (sex) {
     person <- person |>
       dplyr::mutate(sex = .data$gender_concept_id) |>
       dplyr::select("person_id", "sex")
   } else if (age) {
-    person <- person |>
-      dplyr::mutate(
-        # Use DATEFROMPARTS for SQL Server/Synapse compatibility
-        birth_date = dplyr::sql("DATEFROMPARTS(\"year_of_birth\", COALESCE(\"month_of_birth\", 1), COALESCE(\"day_of_birth\", 1))")
-      ) |>
+    person <- addBirthDate(person, cdm) |>
       dplyr::select("person_id", "birth_date")
   } else {
     person <- person |>
