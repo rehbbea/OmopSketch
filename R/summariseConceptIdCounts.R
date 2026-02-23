@@ -130,6 +130,10 @@ summariseConceptIdCounts <- function(cdm,
       ) |>
       dplyr::mutate(source_concept_name = dplyr::coalesce(.data$source_concept_name, "No matching concept"),
                     concept_name = dplyr::coalesce(.data$concept_name, "No matching concept")) |>
+      # Select only needed columns to avoid VARCHAR(MAX) columns (e.g. visit_source_value)
+      # that cause Synapse columnstore index errors on compute()
+      dplyr::select("person_id", "concept_id", "concept_name",
+                    "source_concept_id", "source_concept_name", "start_date") |>
       # add demographics and year
       addStratifications(
         indexDate = "start_date",
